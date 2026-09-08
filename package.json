@@ -1,0 +1,37 @@
+{
+  "name": "rensheng-yuedu",
+  "private": true,
+  "version": "0.1.0",
+  "description": "人生阅读 · 本地优先的个人电子阅读器（MVP）",
+  "type": "module",
+  "packageManager": "pnpm@10.4.1",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -p tsconfig.app.json --noEmit && tsc -p tsconfig.worker.json --noEmit && vite build",
+    "typecheck": "tsc -p tsconfig.app.json --noEmit && tsc -p tsconfig.worker.json --noEmit && tsc -p tsconfig.node.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "serve": "node scripts/serve.mjs",
+    "desktop": "node scripts/make-desktop-entry.mjs"
+  },
+  "dependencies": {
+    "dexie": "^4.0.10",
+    "jschardet": "^3.1.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "6.9.1",
+    "@testing-library/react": "^16.1.0",
+    "@testing-library/user-event": "^14.5.2",
+    "@types/node": "^22.10.2",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "fake-indexeddb": "^6.0.1",
+    "jsdom": "^25.0.1",
+    "typescript": "~5.7.2",
+    "vite": "^5.4.11",
+    "vitest": "^2.1.8"
+  }
+}
