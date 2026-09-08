@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { ConfirmDialog } from '../components/ConfirmDialog';
+import { DOCUMENT_ACCEPT, isSupportedDocument } from '../core/document/kind';
 import { deleteBook, listBooks } from '../core/storage/db';
 import { importBackupData, exportBackupData, type BackupFile } from '../core/backup';
 import type { BookRecord } from '../core/types';
@@ -8,10 +9,6 @@ import { ImportDialog } from '../features/library/ImportDialog';
 
 export interface LibraryPageProps {
   onOpenBook: (bookId: string) => void;
-}
-
-function isTxtFile(file: File): boolean {
-  return file.name.toLowerCase().endsWith('.txt') || file.type === 'text/plain';
 }
 
 function formatReadTime(timestamp: number | null): string {
@@ -116,9 +113,9 @@ export function LibraryPage({ onOpenBook }: LibraryPageProps) {
     (event: React.DragEvent) => {
       event.preventDefault();
       setDragging(false);
-      const file = Array.from(event.dataTransfer.files).find(isTxtFile);
+      const file = Array.from(event.dataTransfer.files).find(isSupportedDocument);
       if (!file) {
-        setNotice('请拖入 .txt 文本文件');
+        setNotice('暂时只支持 TXT / Markdown / 网页 / PDF / Word(.docx) / EPUB 文档');
         window.setTimeout(() => setNotice(null), 3500);
         return;
       }
@@ -255,7 +252,7 @@ export function LibraryPage({ onOpenBook }: LibraryPageProps) {
             className="button primary"
             onClick={() => txtInputRef.current?.click()}
           >
-            + 导入 TXT
+            + 导入文档
           </button>
         </div>
       </header>
@@ -263,7 +260,7 @@ export function LibraryPage({ onOpenBook }: LibraryPageProps) {
       <input
         ref={txtInputRef}
         type="file"
-        accept=".txt,text/plain"
+        accept={DOCUMENT_ACCEPT}
         hidden
         onChange={handleFilePick}
       />
@@ -285,8 +282,10 @@ export function LibraryPage({ onOpenBook }: LibraryPageProps) {
           <div className="empty-state">
             <div className="empty-icon">📚</div>
             <h2>书架还是空的</h2>
-            <p>点击右上角「导入 TXT」，或直接把文本文件拖进这个窗口。</p>
-            <p className="muted small">支持 UTF-8、GBK / GB18030、Big5、UTF-16 的中文 TXT，大文件也放心导入。</p>
+            <p>点击右上角「导入文档」，或直接把文档拖进这个窗口。</p>
+            <p className="muted small">
+              支持 TXT、Markdown、网页、PDF、Word（.docx）和 EPUB；导入后统一转成文字阅读。
+            </p>
           </div>
         ) : (
           <>
@@ -359,7 +358,7 @@ export function LibraryPage({ onOpenBook }: LibraryPageProps) {
 
       {dragging && (
         <div className="drop-overlay">
-          <div>松开即可导入 TXT</div>
+          <div>松开即可导入文档</div>
         </div>
       )}
 

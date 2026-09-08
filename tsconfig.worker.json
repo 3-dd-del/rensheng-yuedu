@@ -12,7 +12,7 @@
     "noFallthroughCasesInSwitch": true,
     "skipLibCheck": true,
     "noEmit": true,
-    "types": []
+    "types": ["vite/client"]
   },
   "include": ["src/workers"]
 }

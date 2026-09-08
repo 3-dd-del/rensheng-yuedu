@@ -1,6 +1,8 @@
 /// <reference lib="webworker" />
 
 import { CHUNK_SIZE } from '../core/constants';
+import type { ImportDocumentKind } from '../core/document/kind';
+import { htmlToPlainText } from '../core/document/html';
 import { decodeText, detectEncoding, splitText } from '../core/encoding';
 import { sha256Hex } from '../core/fingerprint';
 import type { EncodingId } from '../core/types';
@@ -16,6 +18,7 @@ type WorkerRequest =
       requestId: number;
       buffer: ArrayBuffer;
       encoding: EncodingId;
+      sourceKind?: Extract<ImportDocumentKind, 'text' | 'html'>;
     };
 
 interface ImportChunkPayload {
@@ -73,7 +76,8 @@ ctx.onmessage = async (event: MessageEvent<WorkerRequest>) => {
       percent: 5
     } satisfies WorkerResponse);
 
-    const text = decodeText(bytes, request.encoding);
+    const decoded = decodeText(bytes, request.encoding);
+    const text = request.sourceKind === 'html' ? htmlToPlainText(decoded) : decoded;
     const totalChars = text.length;
     const parts = splitText(text, CHUNK_SIZE);
     ctx.postMessage({

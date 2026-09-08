@@ -1,3 +1,4 @@
+import type { ImportDocumentKind } from '../../core/document/kind';
 import type { DetectionResult, EncodingId } from '../../core/types';
 
 export interface DetectPayload {
@@ -93,6 +94,7 @@ export class ImportWorkerClient {
   async decodeChunks(
     buffer: ArrayBuffer,
     encoding: EncodingId,
+    sourceKind: Extract<ImportDocumentKind, 'text' | 'html'> = 'text',
     onProgress?: (percent: number) => void
   ): Promise<DecodePayload> {
     const requestId = this.nextRequestId++;
@@ -100,7 +102,7 @@ export class ImportWorkerClient {
       this.pendingDecode.set(requestId, { resolve, reject });
       if (onProgress) this.decodeProgress.set(requestId, onProgress);
       this.worker.postMessage(
-        { kind: 'import', requestId, buffer, encoding },
+        { kind: 'import', requestId, buffer, encoding, sourceKind },
         [buffer]
       );
     });

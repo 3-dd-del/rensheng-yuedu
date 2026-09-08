@@ -1,10 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { decodePreview, ENCODING_LABEL, ENCODING_OPTIONS } from '../../core/encoding';
+import {
+  detectDocumentKind,
+  DOCUMENT_KIND_LABEL,
+  type ImportDocumentKind
+} from '../../core/document/kind';
+import { sha256Hex } from '../../core/fingerprint';
 import { findBookByFingerprint, db } from '../../core/storage/db';
 import type { BookRecord, DetectionResult, EncodingId } from '../../core/types';
 import { Modal } from '../../components/Modal';
-import { persistImportedBook, validateDecodedChunks } from '../import/import-core';
+import { persistImportedBook, titleFromFileName, validateDecodedChunks } from '../import/import-core';
+import { DocumentWorkerClient } from '../import/document-worker-client';
 import { ImportWorkerClient } from '../import/worker-client';
 
 type Phase =
@@ -20,6 +27,7 @@ type Phase =
       previewText: string;
       selected: EncodingId;
       reason: string;
+      sourceKind: Extract<ImportDocumentKind, 'text' | 'html'>;
     }
   | { name: 'importing'; fileName: string; percent: number; message: string }
   | { name: 'done'; fileName: string; book: BookRecord }
@@ -45,6 +53,7 @@ export function ImportDialog({ file, onDismiss, onImported }: ImportDialogProps)
   const [phase, setPhase] = useState<Phase>({ name: 'idle' });
   const [previewLoading, setPreviewLoading] = useState(false);
   const workerRef = useRef<ImportWorkerClient | null>(null);
+  const documentWorkerRef = useRef<DocumentWorkerClient | null>(null);
 
   useEffect(() => {
     if (!file) return;
@@ -55,21 +64,32 @@ export function ImportDialog({ file, onDismiss, onImported }: ImportDialogProps)
     };
   }, [file]);
 
-  const beginImport = useCallback(
-    async (fileName: string, fingerprint: string, encoding: EncodingId, fileForRead: File) => {
+  const beginTextImport = useCallback(
+    async (
+      fileName: string,
+      fingerprint: string,
+      encoding: EncodingId,
+      sourceKind: Extract<ImportDocumentKind, 'text' | 'html'>,
+      fileForRead: File
+    ) => {
       const worker = workerRef.current;
       if (!worker) return;
       setPhase({ name: 'importing', fileName, percent: 2, message: '正在解码全文…' });
       try {
         const buffer = await fileForRead.arrayBuffer();
-        const payload = await worker.decodeChunks(buffer, encoding, (percent) => {
-          setPhase({
-            name: 'importing',
-            fileName,
-            percent: Math.round(8 + percent * 0.55),
-            message: percent < 35 ? '正在解码全文…' : '正在按页分块…'
-          });
-        });
+        const payload = await worker.decodeChunks(
+          buffer,
+          encoding,
+          sourceKind,
+          (percent) => {
+            setPhase({
+              name: 'importing',
+              fileName,
+              percent: Math.round(8 + percent * 0.55),
+              message: percent < 35 ? '正在解码全文…' : '正在按页分块…'
+            });
+          }
+        );
         validateDecodedChunks(payload.totalChars, payload.chunks);
         setPhase({
           name: 'importing',
@@ -80,7 +100,7 @@ export function ImportDialog({ file, onDismiss, onImported }: ImportDialogProps)
         const book = await persistImportedBook(
           db,
           {
-            title: fileName.replace(/\.[^.]+$/, ''),
+            title: titleFromFileName(fileName),
             originalFileName: fileName,
             fingerprint: fingerprint || payload.fingerprint,
             encoding,
@@ -108,6 +128,82 @@ export function ImportDialog({ file, onDismiss, onImported }: ImportDialogProps)
     []
   );
 
+  const beginDocumentImport = useCallback(
+    async (
+      fileName: string,
+      fileForRead: File,
+      documentType: Extract<ImportDocumentKind, 'pdf' | 'docx' | 'epub'>
+    ) => {
+      setPhase({
+        name: 'importing',
+        fileName,
+        percent: 1,
+        message: `正在读取${DOCUMENT_KIND_LABEL[documentType]}…`
+      });
+      if (!documentWorkerRef.current) {
+        documentWorkerRef.current = new DocumentWorkerClient();
+      }
+      const client = documentWorkerRef.current;
+      try {
+        const buffer = await fileForRead.arrayBuffer();
+        const fingerprint = await sha256Hex(new Uint8Array(buffer));
+        const existing = await findBookByFingerprint(fingerprint);
+        if (existing) {
+          setPhase({ name: 'duplicate', fileName, existing });
+          return;
+        }
+        const converted = await client.convert(buffer, documentType, (percent) => {
+          setPhase({
+            name: 'importing',
+            fileName,
+            percent: Math.round(6 + percent * 0.58),
+            message:
+              documentType === 'pdf'
+                ? '正在逐页提取 PDF 文字…'
+                : `正在解析${DOCUMENT_KIND_LABEL[documentType]}…`
+          });
+        });
+        validateDecodedChunks(converted.totalChars, converted.chunks);
+        setPhase({
+          name: 'importing',
+          fileName,
+          percent: 70,
+          message: '正在写入本地书库…'
+        });
+        const book = await persistImportedBook(
+          db,
+          {
+            title: titleFromFileName(fileName),
+            originalFileName: fileName,
+            fingerprint,
+            encoding: 'utf-8',
+            totalChars: converted.totalChars,
+            chunks: converted.chunks
+          },
+          (percent) => {
+            setPhase({
+              name: 'importing',
+              fileName,
+              percent: Math.round(70 + percent * 0.28),
+              message: '正在写入本地书库…'
+            });
+          }
+        );
+        setPhase({ name: 'done', fileName, book });
+      } catch (error) {
+        setPhase({
+          name: 'error',
+          fileName,
+          message: error instanceof Error ? error.message : '文档转换失败，请重试'
+        });
+      } finally {
+        documentWorkerRef.current?.dispose();
+        documentWorkerRef.current = null;
+      }
+    },
+    []
+  );
+
   useEffect(() => {
     if (!file) {
       setPhase({ name: 'idle' });
@@ -119,8 +215,23 @@ export function ImportDialog({ file, onDismiss, onImported }: ImportDialogProps)
     let cancelled = false;
     const fileName = file.name;
     (async () => {
-      setPhase({ name: 'detecting', fileName });
+      const kind = detectDocumentKind(file);
       try {
+        if (kind === 'unsupported') {
+          setPhase({
+            name: 'error',
+            fileName,
+            message:
+              '暂不支持这种文件格式。当前支持 TXT / Markdown / 网页 / PDF / Word(.docx) / EPUB。'
+          });
+          return;
+        }
+        if (kind === 'pdf' || kind === 'docx' || kind === 'epub') {
+          await beginDocumentImport(fileName, file, kind);
+          return;
+        }
+
+        setPhase({ name: 'detecting', fileName });
         const buffer = await file.arrayBuffer();
         const payload = await worker.detectFile(buffer);
         if (cancelled) return;
@@ -132,7 +243,13 @@ export function ImportDialog({ file, onDismiss, onImported }: ImportDialogProps)
         }
 
         if (payload.detection.auto) {
-          await beginImport(fileName, payload.fingerprint, payload.detection.encoding, file);
+          await beginTextImport(
+            fileName,
+            payload.fingerprint,
+            payload.detection.encoding,
+            kind === 'html' ? 'html' : 'text',
+            file
+          );
           return;
         }
 
@@ -146,7 +263,8 @@ export function ImportDialog({ file, onDismiss, onImported }: ImportDialogProps)
           initial: payload.detection,
           previewText,
           selected: payload.detection.encoding,
-          reason: basisText(payload.detection)
+          reason: basisText(payload.detection),
+          sourceKind: kind === 'html' ? 'html' : 'text'
         });
       } catch (error) {
         if (!cancelled) {
@@ -161,7 +279,7 @@ export function ImportDialog({ file, onDismiss, onImported }: ImportDialogProps)
     return () => {
       cancelled = true;
     };
-  }, [file, beginImport]);
+  }, [beginDocumentImport, beginTextImport, file]);
 
   const busy = phase.name === 'detecting' || phase.name === 'importing';
   const title =
@@ -173,7 +291,7 @@ export function ImportDialog({ file, onDismiss, onImported }: ImportDialogProps)
           ? '导入完成'
           : phase.name === 'error'
             ? '导入失败'
-            : '导入书籍';
+            : '导入文档';
 
   const changeEncoding = async (encoding: EncodingId) => {
     if (phase.name !== 'encoding') return;
@@ -287,7 +405,15 @@ export function ImportDialog({ file, onDismiss, onImported }: ImportDialogProps)
             type="button"
             className="button primary"
             disabled={previewLoading}
-            onClick={() => void beginImport(phase.fileName, phase.fingerprint, phase.selected, phase.file)}
+            onClick={() =>
+              void beginTextImport(
+                phase.fileName,
+                phase.fingerprint,
+                phase.selected,
+                phase.sourceKind,
+                phase.file
+              )
+            }
           >
             按此编码导入
           </button>
