@@ -316,6 +316,9 @@ export function ImportDialog({ file, onDismiss, onImported }: ImportDialogProps)
     return null;
   };
 
+  // 没有待导入文件时不渲染任何浮层，书架页才能正常交互。
+  if (!file) return null;
+
   return (
     <Modal
       title={title}

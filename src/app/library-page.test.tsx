@@ -14,5 +14,6 @@ describe('书架页', () => {
     render(<LibraryPage onOpenBook={vi.fn()} />);
     expect(await screen.findByText('书架还是空的')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '+ 导入 TXT' })).toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: '导入书籍' })).not.toBeInTheDocument();
   });
 });
