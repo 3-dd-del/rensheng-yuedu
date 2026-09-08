@@ -9,6 +9,13 @@ function configurePdfWorker(): void {
   workerConfigured = true;
 }
 
+function pdfAssetUrl(relative: string): string {
+  if (typeof self !== 'undefined' && 'location' in self && self.location) {
+    return new URL(relative, self.location.origin).href;
+  }
+  return relative;
+}
+
 /**
  * 提取 PDF 中的文字层。扫描件/纯图片 PDF 不含文字层，会返回空文本。
  */
@@ -21,6 +28,9 @@ export async function pdfToText(
   try {
     const task = getDocument({
       data: bytes,
+      cMapUrl: pdfAssetUrl('/pdfjs-cmaps/'),
+      cMapPacked: true,
+      standardFontDataUrl: pdfAssetUrl('/pdfjs-standard-fonts/'),
       disableFontFace: true,
       useSystemFonts: true,
       isEvalSupported: false,
