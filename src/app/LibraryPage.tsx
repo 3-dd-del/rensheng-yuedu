@@ -130,6 +130,11 @@ export function LibraryPage({ onOpenBook }: LibraryPageProps) {
     if (file) setImportFile(file);
   }, []);
 
+  const dismissImport = useCallback(() => {
+    setImportFile(null);
+    void refresh();
+  }, [refresh]);
+
   const handleExport = useCallback(async () => {
     setBackupBusy(true);
     try {
@@ -323,18 +328,16 @@ export function LibraryPage({ onOpenBook }: LibraryPageProps) {
                       </div>
                     </div>
                     <div className="book-actions">
-                      {book.lastReadAt && (
-                        <button
-                          type="button"
-                          className="button small"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            onOpenBook(book.id);
-                          }}
-                        >
-                          续读 {Math.round(percent)}%
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        className="button small"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          onOpenBook(book.id);
+                        }}
+                      >
+                        {book.lastReadAt ? `续读 ${Math.round(percent)}%` : '开始阅读'}
+                      </button>
                       <button
                         type="button"
                         className="icon-button subtle"
@@ -366,7 +369,7 @@ export function LibraryPage({ onOpenBook }: LibraryPageProps) {
 
       <ImportDialog
         file={importFile}
-        onDismiss={() => setImportFile(null)}
+        onDismiss={dismissImport}
         onImported={importBook}
       />
 

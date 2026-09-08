@@ -31,6 +31,7 @@ export async function pdfToText(
       cMapUrl: pdfAssetUrl('/pdfjs-cmaps/'),
       cMapPacked: true,
       standardFontDataUrl: pdfAssetUrl('/pdfjs-standard-fonts/'),
+      useWorkerFetch: true,
       disableFontFace: true,
       useSystemFonts: true,
       isEvalSupported: false,
