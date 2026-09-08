@@ -379,7 +379,9 @@ export function ReaderPage({ bookId, onBack }: ReaderPageProps) {
     if (!current) return;
     const session = sessionRef.current;
     if (!session) return;
-    if (current.start >= session.source.totalChars) return;
+    if (current.start >= session.source.totalChars || current.end >= session.source.totalChars) {
+      return;
+    }
     turnTo(current.pageIndex + 1);
   }, [turnTo]);
 
@@ -513,7 +515,7 @@ export function ReaderPage({ bookId, onBack }: ReaderPageProps) {
   const atLastPage =
     view &&
     book &&
-    view.start >= book.totalChars;
+    view.end >= book.totalChars;
   const displayPercent =
     book && book.totalChars > 0 ? clampPercent((view?.start ?? 0) / book.totalChars * 100) : 0;
 

@@ -12,10 +12,13 @@ export class ReaderDatabase extends Dexie {
   constructor(name = DB_NAME) {
     super(name);
     this.version(1).stores({
-      books: 'id, fingerprint, lastReadAt, importedAt',
+      books: 'id, fingerprint, lastReadAt',
       chunks: '[bookId+index], [bookId+start], bookId',
       pages: '++id, [bookId+layoutKey+page], bookId, layoutKey',
       settings: 'key'
+    });
+    this.version(2).stores({
+      books: 'id, fingerprint, lastReadAt, importedAt'
     });
   }
 }
