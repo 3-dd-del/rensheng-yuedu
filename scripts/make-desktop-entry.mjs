@@ -33,8 +33,8 @@ Function IsRunning()
   Dim http
   Set http = CreateObject("MSXML2.XMLHTTP")
   http.open "GET", url, False
-  http.setTimeouts 800, 800, 800, 800
   http.send
+  Err.Clear
   If Err.Number = 0 And http.Status = 200 Then
     IsRunning = True
   Else
