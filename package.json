@@ -2,6 +2,7 @@
   "name": "rensheng-yuedu",
   "private": true,
   "version": "0.1.0",
+  "license": "MIT",
   "description": "人生阅读 · 本地优先的个人电子阅读器（MVP）",
   "type": "module",
   "packageManager": "pnpm@10.4.1",
