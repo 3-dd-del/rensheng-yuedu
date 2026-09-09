@@ -2,6 +2,7 @@ node_modules/
 dist/
 *.local
 .local/
+.pnpm-store/
 .DS_Store
 coverage/
 playwright-report/
