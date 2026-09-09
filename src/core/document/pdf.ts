@@ -10,10 +10,8 @@ function configurePdfWorker(): void {
 }
 
 function pdfAssetUrl(relative: string): string {
-  if (typeof self !== 'undefined' && 'location' in self && self.location) {
-    return new URL(relative, self.location.origin).href;
-  }
-  return relative;
+  // 以当前运行文件所在目录为基准解析，兼容 GitHub Pages 子目录等部署方式。
+  return new URL(relative, import.meta.url).href;
 }
 
 /**
@@ -28,9 +26,9 @@ export async function pdfToText(
   try {
     const task = getDocument({
       data: bytes,
-      cMapUrl: pdfAssetUrl('/pdfjs-cmaps/'),
+      cMapUrl: pdfAssetUrl('pdfjs-cmaps/'),
       cMapPacked: true,
-      standardFontDataUrl: pdfAssetUrl('/pdfjs-standard-fonts/'),
+      standardFontDataUrl: pdfAssetUrl('pdfjs-standard-fonts/'),
       useWorkerFetch: true,
       disableFontFace: true,
       useSystemFonts: true,

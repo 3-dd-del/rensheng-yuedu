@@ -34,10 +34,13 @@ const pdfjsRoot = path.join(
   'node_modules',
   'pdfjs-dist'
 );
-copyDirectory(path.join(pdfjsRoot, 'cmaps'), path.join(distDir, 'pdfjs-cmaps'));
+copyDirectory(
+  path.join(pdfjsRoot, 'cmaps'),
+  path.join(distDir, 'assets', 'pdfjs-cmaps')
+);
 copyDirectory(
   path.join(pdfjsRoot, 'standard_fonts'),
-  path.join(distDir, 'pdfjs-standard-fonts')
+  path.join(distDir, 'assets', 'pdfjs-standard-fonts')
 );
 
-console.log('PDF.js cmaps 与标准字体已复制到 dist');
+console.log('PDF.js cmaps 与标准字体已复制到 dist/assets');
