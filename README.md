@@ -2,6 +2,10 @@
 
 本地优先的个人电子阅读器：在浏览器里导入常见文档、翻页阅读、断点续读，书籍与阅读进度只保存在你自己的设备上，无需账号与网络。
 
+## 在线体验
+
+网页版已发布在 [3-dd-del.github.io/rensheng-yuedu](https://3-dd-del.github.io/rensheng-yuedu/)，直接打开即可使用；也可以从 [Releases 页面](https://github.com/3-dd-del/rensheng-yuedu/releases) 下载网页离线包自行部署。
+
 ## 功能特点
 
 - 多格式导入：TXT、Markdown、网页（HTML）、Word（.docx）、PDF（带文字层）、EPUB 电子书
